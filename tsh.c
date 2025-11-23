@@ -186,6 +186,7 @@ void eval(char *cmdline)
         int pid = Fork();
         if (pid == 0)
         {
+            printf("Process forked with a pid: %d", pid);
             if (execve(argv[0], argv , NULL) < 0)
             {
                 printf("Couldn't execute a program: %s\n", argv[0]);
@@ -265,7 +266,20 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-    /* TODO */
+    if (argv[0] == "quit")
+    {
+        exit(0);
+    }
+    if (argv[0] == "jobs")
+    {
+        listjobs(jobs);
+    }
+
+    if (argv[0] == "bg" || argv[0] == "fg")
+    {
+        do_bgfg(argv);
+        return 1;
+    }
     return 0;     /* not a builtin command */
 }
 
