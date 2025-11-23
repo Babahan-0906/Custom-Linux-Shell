@@ -176,7 +176,29 @@ pid_t Fork()
 */
 void eval(char *cmdline) 
 {
-    /* TODO */
+    // printf((cmdline));
+    
+    char *argv[MAXARGS];
+    int isBg = parseline(cmdline, argv);
+
+    if (!builtin_cmd(argv))
+    {
+        int pid = Fork();
+        if (pid == 0)
+        {
+            if (execve(argv[0], argv , NULL) < 0)
+            {
+                printf("Couldn't execute a program: %s\n", argv[0]);
+                exit(0);
+            }
+        }
+        if (!isBg)
+        {
+            if (waitpid(pid, NULL, 0) < 0)
+                printf("Child didn't die normally");
+        }
+    }
+
     return;
 }
 
