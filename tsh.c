@@ -150,6 +150,18 @@ int main(int argc, char **argv)
 
     exit(0); /* control never reaches here */
 }
+
+pid_t Fork()
+{
+    pid_t pid;
+    pid = fork();
+    if (pid < 0)
+    {
+        printf("Error forking a process");
+        exit(0);
+    }
+    return pid;
+}
   
 /* 
  * eval - Evaluate the command line that the user has just typed in
