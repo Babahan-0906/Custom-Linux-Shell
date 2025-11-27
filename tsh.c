@@ -206,7 +206,7 @@ void eval(char *cmdline)
             setpgid(0, 0);
             if (execve(argv[0], argv, environ) < 0)
             {
-                printf("Couldn't execute a program: %s\n", argv[0]);
+                printf("%s: Command not found", argv[0]);
                 exit(0);
             }
         }
@@ -338,6 +338,8 @@ void do_bgfg(char **argv)
     {
         jid = atoi(argv[1] + 1);
     }
+    // printf("job id: %d", jid);
+    // fflush(stdout);
 
     for (i=0; i<MAXJOBS; i++)
     {
@@ -352,6 +354,7 @@ void do_bgfg(char **argv)
             {
                 jobs[i].state = FG;
             }
+            kill(-jobs[i].pid, SIGCONT);
             kill(jobs[i].pid, SIGCONT);
             if (strcmp(argv[0], "fg") == 0)
                 waitfg(jobs[i].pid);
