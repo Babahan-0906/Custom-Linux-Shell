@@ -224,14 +224,14 @@ void eval(char *cmdline)
             sigprocmask(SIG_SETMASK, &prev, NULL);
             // sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
-            listjobs(jobs);
+            // listjobs(jobs);
             waitfg(pid);
         }
         else
         {
             addjob(jobs, pid, BG, buf);
+	        printf("[%d] (%d) %s", pid2jid(pid), pid, buf);
             sigprocmask(SIG_SETMASK, &prev, NULL);
-            // printf("Process forked with a pid: %d; %s\n", pid, cmdline);
         }
         // unblock sigchld mask
         sigprocmask(SIG_UNBLOCK, &mask, NULL);
@@ -337,7 +337,7 @@ void waitfg(pid_t pid)
 {
     // block all unnecessary signals, keep process cleaning ..
     int olderrno = errno;
-    printf("%d", getjobpid(jobs, pid)->pid);
+    // printf("%d", getjobpid(jobs, pid)->pid);
     while (getjobpid(jobs, pid) != NULL)
     {
         // fflush(stdout);
@@ -373,7 +373,7 @@ void sigchld_handler(int sig)
     //     else
     //         _exit(0);
 
-    int olderrno = errno;
+    int olderrno = errno, status;
     sigset_t mask_all, prev_all;
     pid_t pid;
 
@@ -382,9 +382,13 @@ void sigchld_handler(int sig)
     
     // todo: curretnly only reaping the foreground job
     pid = fgpid(jobs);
-    if ((pid = waitpid(pid, NULL, 0)) > 0)
+    if ((pid = waitpid(pid, &status, 0)) > 0)
     {
-        deletejob(jobs, pid);   
+        if (WIFSIGNALED(status) != 0)
+        {
+            printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, WTERMSIG(status));
+        }  
+        deletejob(jobs, pid);
     }
     sigprocmask(SIG_SETMASK, &prev_all, NULL);
     
@@ -399,7 +403,17 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    /* TODO */
+    int olderrno = errno;
+    // sigset_t mask_all, prev_all;
+    // pid_t pid;
+    
+    // sigfillset(&mask_all);
+    // sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
+    
+    int fg_pid = fgpid(jobs);
+    kill(-fg_pid, SIGINT);
+
+    errno = olderrno;
     return;
 }
 
