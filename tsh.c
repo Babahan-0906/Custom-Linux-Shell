@@ -327,7 +327,38 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    /* TODO */
+    int jid, i;
+
+    // printf("%s", argv[1]);
+    if (argv[1][0] != '%')
+    {
+        jid = pid2jid(atoi(argv[1])); 
+    }
+    else
+    {
+        jid = atoi(argv[1] + 1);
+    }
+
+    for (i=0; i<MAXJOBS; i++)
+    {
+        if (jobs[i].jid == jid)
+        {
+            if (strcmp(argv[0], "bg") == 0)
+            {
+                jobs[i].state = BG;
+                printf("[%d] (%d) %s", jobs[i].jid, jobs[i].pid, jobs[i].cmdline);
+            }
+            else
+            {
+                jobs[i].state = FG;
+            }
+            kill(jobs[i].pid, SIGCONT);
+            if (strcmp(argv[0], "fg") == 0)
+                waitfg(jobs[i].pid);
+
+        }
+    }
+ 
     return;
 }
 
