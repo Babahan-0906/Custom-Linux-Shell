@@ -206,7 +206,7 @@ void eval(char *cmdline)
             setpgid(0, 0);
             if (execve(argv[0], argv, environ) < 0)
             {
-                printf("%s: Command not found", argv[0]);
+                printf("%s: Command not found\n", argv[0]);
                 exit(0);
             }
         }
@@ -327,16 +327,39 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    int jid, i;
+    int jid, i, pid;
 
-    // printf("%s", argv[1]);
-    if (argv[1][0] != '%')
+    // printf("entered to bgfg, first buildin_command %s; ", argv[0]);
+    // fflush(stdout);
+    if (argv[1] == NULL)
     {
-        jid = pid2jid(atoi(argv[1])); 
+        printf("%s command requires PID or %%jobid argument\n", argv[0]);
+        return;
+    }
+
+    if (argv[1][0] == '%')
+    {
+        jid = atoi(argv[1] + 1);
+        if (getjobjid(jobs, jid) == NULL)
+        {
+            printf("%s: No such job\n", argv[1]);
+            return;
+        }
     }
     else
     {
-        jid = atoi(argv[1] + 1);
+        pid = atoi(argv[1]);
+        if (pid == 0)
+        {
+            printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+            return;
+        }
+        jid = pid2jid(pid);
+        if (jid == 0)
+        {
+            printf("(%s): No such process\n", argv[1]);
+            return;
+        }
     }
     // printf("job id: %d", jid);
     // fflush(stdout);
