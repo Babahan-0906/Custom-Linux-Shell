@@ -338,7 +338,8 @@ void waitfg(pid_t pid)
     // block all unnecessary signals, keep process cleaning ..
     int olderrno = errno;
     // printf("%d", getjobpid(jobs, pid)->pid);
-    while (getjobpid(jobs, pid) != NULL)
+    struct job_t* fg_job = getjobpid(jobs, pid);
+    while (fg_job != NULL  &&  fg_job->state == FG)
     {
         // fflush(stdout);
         sleep(1);
@@ -424,7 +425,28 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    int olderrno = errno;
+    int i;
+    // sigset_t mask_all, prev_all;
+    // pid_t pid;
     
+    // sigfillset(&mask_all);
+    // sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
+    
+    int fg_pid = fgpid(jobs);
+    kill(-fg_pid, SIGSTOP);
+    for (i=0; i<MAXJOBS; i++)
+    {
+        if (jobs[i].pid == fg_pid)
+        {
+            jobs[i].state = ST;
+            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_pid), fg_pid, 20);
+
+            break;
+        }
+    }
+
+    errno = olderrno;
     return;
 }
 
