@@ -217,18 +217,21 @@ void eval(char *cmdline)
         // - process might recieve BLOCK, STOP, which clears all JOBS, (however current job wasnt even added yet)
         //   - block everything
         
-        sigprocmask(SIG_BLOCK, &block_all, &prev);
+        sigprocmask(SIG_BLOCK, &block_all, NULL);
         if (!isBg)
         {
             addjob(jobs, pid, FG, buf);
             sigprocmask(SIG_SETMASK, &prev, NULL);
+            // sigprocmask(SIG_UNBLOCK, &mask, NULL);
+
+            listjobs(jobs);
             waitfg(pid);
         }
         else
         {
             addjob(jobs, pid, BG, buf);
-            printf("Process forked with a pid: %d; %s\n", pid, cmdline);
             sigprocmask(SIG_SETMASK, &prev, NULL);
+            // printf("Process forked with a pid: %d; %s\n", pid, cmdline);
         }
         // unblock sigchld mask
         sigprocmask(SIG_UNBLOCK, &mask, NULL);
@@ -332,10 +335,20 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    if (waitpid(pid, NULL, 0) < 0)
-        printf("Child didn't die normally\n");
-    else
-        printf("Process %d terminated and cleaned\n", pid);
+    // block all unnecessary signals, keep process cleaning ..
+    int olderrno = errno;
+    printf("%d", getjobpid(jobs, pid)->pid);
+    while (getjobpid(jobs, pid) != NULL)
+    {
+        // fflush(stdout);
+        sleep(1);
+        // kill(0, SIGCHLD);
+        // printf("Process %d terminated and cleaned\n", pid);
+    }
+    // if (errno != ECHILD)
+        // printf("Child was interrupted or was cleared already\n"),
+        // fflush(stdout);
+    errno = olderrno;
     return;
 }
 
@@ -353,18 +366,29 @@ void waitfg(pid_t pid)
 void sigchld_handler(int sig) 
 {
     // save errorno
+    // const char kill_msg[] = "Some child died \n";
+    //     if (write(STDOUT_FILENO, kill_msg, sizeof(kill_msg) - 1) > 0)
+    //     {
+    //     }
+    //     else
+    //         _exit(0);
+
+    int olderrno = errno;
+    sigset_t mask_all, prev_all;
+    pid_t pid;
+
+    sigfillset(&mask_all);
+    sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
     
-    const char kill_msg[] = "Some child died \n";
-    if (write(STDOUT_FILENO, kill_msg, sizeof(kill_msg) - 1) > 0)
+    // todo: curretnly only reaping the foreground job
+    pid = fgpid(jobs);
+    if ((pid = waitpid(pid, NULL, 0)) > 0)
     {
-        // delete the job;
-        // while deleting do not interrupt with other sig handlers
-        // 
+        deletejob(jobs, pid);   
     }
-    else
-        _exit(0);
-
-
+    sigprocmask(SIG_SETMASK, &prev_all, NULL);
+    
+    errno = olderrno;
     return;
 }
 
