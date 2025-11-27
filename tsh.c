@@ -179,25 +179,60 @@ void eval(char *cmdline)
     // printf((cmdline));
     
     char *argv[MAXARGS];
-    int isBg = parseline(cmdline, argv);
+    char buf[MAXLINE];
+    pid_t pid;
+    int isBg;
+    
+    strcpy(buf, cmdline);
+    isBg = parseline(buf, argv);
+
+    if (argv[0] == NULL)
+        return;
+
+    sigset_t mask, prev, block_all;
+    sigfillset(&block_all);
+    sigemptyset(&mask);
+    sigaddset (&mask, SIGCHLD);
+
 
     if (!builtin_cmd(argv))
     {
-        int pid = Fork();
+        sigprocmask (SIG_BLOCK, &mask, &prev);
+        pid = Fork();
         if (pid == 0)
         {
-            printf("Process forked with a pid: %d", pid);
-            if (execve(argv[0], argv , NULL) < 0)
+            sigprocmask (SIG_SETMASK, &prev, NULL);
+            // child has a new groupid
+            // because bg jobs, should not get terminated
+            setpgid(0, 0);
+            if (execve(argv[0], argv, environ) < 0)
             {
                 printf("Couldn't execute a program: %s\n", argv[0]);
                 exit(0);
             }
         }
+        // When fork finishes:
+        // - child throws sigchld cmd:
+        //   - rn its blocked
+        // - process might recieve BLOCK, STOP, which clears all JOBS, (however current job wasnt even added yet)
+        //   - block everything
+        
+        sigprocmask(SIG_BLOCK, &block_all, &prev);
         if (!isBg)
         {
-            if (waitpid(pid, NULL, 0) < 0)
-                printf("Child didn't die normally");
+            addjob(jobs, pid, FG, buf);
+            sigprocmask(SIG_SETMASK, &prev, NULL);
+            waitfg(pid);
         }
+        else
+        {
+            addjob(jobs, pid, BG, buf);
+            printf("Process forked with a pid: %d; %s\n", pid, cmdline);
+            sigprocmask(SIG_SETMASK, &prev, NULL);
+        }
+        // unblock sigchld mask
+        sigprocmask(SIG_UNBLOCK, &mask, NULL);
+
     }
 
     return;
@@ -266,16 +301,16 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-    if (argv[0] == "quit")
+    if (!strcmp(argv[0], "quit"))
     {
         exit(0);
     }
-    if (argv[0] == "jobs")
+    if (!strcmp(argv[0], "jobs"))
     {
         listjobs(jobs);
+        return 1;
     }
-
-    if (argv[0] == "bg" || argv[0] == "fg")
+    if (!strcmp(argv[0], "fg") || !strcmp(argv[0], "bg"))
     {
         do_bgfg(argv);
         return 1;
@@ -297,7 +332,10 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    /* TODO */
+    if (waitpid(pid, NULL, 0) < 0)
+        printf("Child didn't die normally\n");
+    else
+        printf("Process %d terminated and cleaned\n", pid);
     return;
 }
 
@@ -314,7 +352,19 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    /* TODO */
+    // save errorno
+    
+    const char kill_msg[] = "Some child died \n";
+    if (write(STDOUT_FILENO, kill_msg, sizeof(kill_msg) - 1) > 0)
+    {
+        // delete the job;
+        // while deleting do not interrupt with other sig handlers
+        // 
+    }
+    else
+        _exit(0);
+
+
     return;
 }
 
@@ -336,7 +386,7 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-    /* TODO */
+    
     return;
 }
 
