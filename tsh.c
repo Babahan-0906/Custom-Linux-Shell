@@ -194,7 +194,6 @@ void eval(char *cmdline)
     sigemptyset(&mask);
     sigaddset (&mask, SIGCHLD);
 
-
     if (!builtin_cmd(argv))
     {
         sigprocmask (SIG_BLOCK, &mask, &prev);
@@ -222,6 +221,8 @@ void eval(char *cmdline)
         {
             addjob(jobs, pid, FG, buf);
             sigprocmask(SIG_SETMASK, &prev, NULL);
+
+	        // printf("[%d] (%d) %s", pid2jid(pid), pid, buf);
             // sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
             // listjobs(jobs);
@@ -234,7 +235,7 @@ void eval(char *cmdline)
             sigprocmask(SIG_SETMASK, &prev, NULL);
         }
         // unblock sigchld mask
-        sigprocmask(SIG_UNBLOCK, &mask, NULL);
+        // sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
     }
 
@@ -379,8 +380,7 @@ void sigchld_handler(int sig)
     pid_t pid;
 
     sigfillset(&mask_all);
-    sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
-    
+    // todo: whys not to block all signals here? before waitpid?
     // todo: curretnly only reaping the foreground job
     pid = fgpid(jobs);
     if ((pid = waitpid(pid, &status, 0)) > 0)
@@ -389,9 +389,10 @@ void sigchld_handler(int sig)
         {
             printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, WTERMSIG(status));
         }  
+        sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
         deletejob(jobs, pid);
+        sigprocmask(SIG_SETMASK, &prev_all, NULL);
     }
-    sigprocmask(SIG_SETMASK, &prev_all, NULL);
     
     errno = olderrno;
     return;
@@ -405,14 +406,25 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig) 
 {
     int olderrno = errno;
+    sigset_t mask_all, prev_all;
+    pid_t fg_pid;
+    // pid_t pgid;
+
+    sigfillset(&mask_all);
+    sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
     // sigset_t mask_all, prev_all;
     // pid_t pid;
     
     // sigfillset(&mask_all);
     // sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
     
-    int fg_pid = fgpid(jobs);
+    fg_pid = fgpid(jobs);
+    // pgid = getpgrp();
+    // printf("parent group process id: %d, %d, \n", fg_pid, pgid);
     kill(-fg_pid, SIGINT);
+    kill(fg_pid, SIGINT);
+    sigprocmask(SIG_SETMASK, &prev_all, NULL);
+
 
     errno = olderrno;
     return;
@@ -435,6 +447,7 @@ void sigtstp_handler(int sig)
     
     int fg_pid = fgpid(jobs);
     kill(-fg_pid, SIGSTOP);
+    kill(fg_pid, SIGSTOP);
     for (i=0; i<MAXJOBS; i++)
     {
         if (jobs[i].pid == fg_pid)
