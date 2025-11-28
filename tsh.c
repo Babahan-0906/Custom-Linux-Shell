@@ -176,8 +176,6 @@ pid_t Fork()
 */
 void eval(char *cmdline) 
 {
-    // printf((cmdline));
-    
     char *argv[MAXARGS];
     char buf[MAXLINE];
     pid_t pid;
@@ -210,22 +208,12 @@ void eval(char *cmdline)
                 exit(0);
             }
         }
-        // When fork finishes:
-        // - child throws sigchld cmd:
-        //   - rn its blocked
-        // - process might recieve BLOCK, STOP, which clears all JOBS, (however current job wasnt even added yet)
-        //   - block everything
         
         sigprocmask(SIG_BLOCK, &block_all, NULL);
         if (!isBg)
         {
             addjob(jobs, pid, FG, buf);
             sigprocmask(SIG_SETMASK, &prev, NULL);
-
-	        // printf("[%d] (%d) %s", pid2jid(pid), pid, buf);
-            // sigprocmask(SIG_UNBLOCK, &mask, NULL);
-
-            // listjobs(jobs);
             waitfg(pid);
         }
         else
@@ -236,7 +224,6 @@ void eval(char *cmdline)
         }
         // unblock sigchld mask
         // sigprocmask(SIG_UNBLOCK, &mask, NULL);
-
     }
 
     return;
@@ -329,8 +316,6 @@ void do_bgfg(char **argv)
 {
     int jid, i, pid;
 
-    // printf("entered to bgfg, first buildin_command %s; ", argv[0]);
-    // fflush(stdout);
     if (argv[1] == NULL)
     {
         printf("%s command requires PID or %%jobid argument\n", argv[0]);
@@ -361,8 +346,6 @@ void do_bgfg(char **argv)
             return;
         }
     }
-    // printf("job id: %d", jid);
-    // fflush(stdout);
 
     for (i=0; i<MAXJOBS; i++)
     {
@@ -393,20 +376,12 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    // block all unnecessary signals, keep process cleaning ..
     int olderrno = errno;
-    // printf("%d", getjobpid(jobs, pid)->pid);
     struct job_t* fg_job = getjobpid(jobs, pid);
     while (fg_job != NULL  &&  fg_job->state == FG)
     {
-        // fflush(stdout);
         sleep(1);
-        // kill(0, SIGCHLD);
-        // printf("Process %d terminated and cleaned\n", pid);
     }
-    // if (errno != ECHILD)
-        // printf("Child was interrupted or was cleared already\n"),
-        // fflush(stdout);
     errno = olderrno;
     return;
 }
@@ -424,21 +399,11 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    // save errorno
-    // const char kill_msg[] = "Some child died \n";
-    //     if (write(STDOUT_FILENO, kill_msg, sizeof(kill_msg) - 1) > 0)
-    //     {
-    //     }
-    //     else
-    //         _exit(0);
-
     int olderrno = errno, status;
     sigset_t mask_all, prev_all;
     pid_t pid;
 
     sigfillset(&mask_all);
-    // todo: whys not to block all signals here? before waitpid?
-    // todo: curretnly only reaping the foreground job
     pid = fgpid(jobs);
     if ((pid = waitpid(pid, &status, 0)) > 0)
     {
@@ -465,19 +430,11 @@ void sigint_handler(int sig)
     int olderrno = errno;
     sigset_t mask_all, prev_all;
     pid_t fg_pid;
-    // pid_t pgid;
 
     sigfillset(&mask_all);
     sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
-    // sigset_t mask_all, prev_all;
-    // pid_t pid;
-    
-    // sigfillset(&mask_all);
-    // sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
     
     fg_pid = fgpid(jobs);
-    // pgid = getpgrp();
-    // printf("parent group process id: %d, %d, \n", fg_pid, pgid);
     kill(-fg_pid, SIGINT);
     kill(fg_pid, SIGINT);
     sigprocmask(SIG_SETMASK, &prev_all, NULL);
@@ -496,11 +453,6 @@ void sigtstp_handler(int sig)
 {
     int olderrno = errno;
     int i;
-    // sigset_t mask_all, prev_all;
-    // pid_t pid;
-    
-    // sigfillset(&mask_all);
-    // sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
     
     int fg_pid = fgpid(jobs);
     kill(-fg_pid, SIGSTOP);
