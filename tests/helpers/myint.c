@@ -1,8 +1,8 @@
 /* 
- * mystop.c - Another handy routine for testing your tiny shell
+ * myint.c - Another handy routine for testing your tiny shell
  * 
- * usage: mystop <n>
- * Sleeps for <n> seconds and sends SIGTSTP to itself.
+ * usage: myint <n>
+ * Sleeps for <n> seconds and then sends a SIGINT to itself.
  *
  */
 #include <stdio.h>
@@ -24,13 +24,10 @@ int main(int argc, char **argv)
     secs = atoi(argv[1]);
 
     for (i=0; i < secs; i++)
-       sleep(1);
-	
-    pid = getpid(); 
+	sleep(1);
 
-    if (kill(-pid, SIGTSTP) < 0)
-       fprintf(stderr, "kill (tstp) error");
+    pid = getpid(); 
+    kill(pid, SIGINT);
 
     exit(0);
-
 }

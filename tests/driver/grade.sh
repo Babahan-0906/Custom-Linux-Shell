@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)
+HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd)
 tests=("trace01.txt" "trace02.txt" "trace03.txt"
     "trace04.txt" "trace05.txt" "trace06.txt"
     "trace07.txt" "trace08.txt" "trace09.txt"
@@ -26,7 +26,7 @@ make clean >/dev/null 2>&1 && make build || echo "ERROR: tsh.c did not compile."
 echo "Correctness Tests"
 echo ""
 for test in ${tests[@]}; do
-    timeout 25 ./checktsh.pl -e -t $test
+    timeout 25 ./tests/driver/checktsh.pl -e -t tests/$test
     if [ $? -eq 0 ]; then
         score=$((score + point))
     fi

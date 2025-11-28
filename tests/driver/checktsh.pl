@@ -300,9 +300,9 @@ sub check_trace13 {
 sub check_trace {
 
     my $tracefile = $_[0];
-    my $driver = "./sdriver.pl";
+    my $driver = "./tests/driver/sdriver.pl";
     my $tsh = "./tsh";
-    my $tshref = "./tshref";
+    my $tshref = "./tests/driver/tshref";
     my $tmpdir = "/tmp/tsh$$";
 
     # Had to make these global for errexit() ... Ugh
