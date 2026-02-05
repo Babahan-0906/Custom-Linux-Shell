@@ -8,10 +8,13 @@ CC = gcc
 CFLAGS = -Wall -O2 -Wextra -Wno-unused-parameter -Werror -pedantic -fsanitize=address
 FILES = $(TSH) ./myspin ./mysplit ./mystop ./myint
 
+# Add local libs to path for tshref compatibility
+export LD_LIBRARY_PATH := ./tests/driver/libs:$(LD_LIBRARY_PATH)
+
 # C formatting related constants
 TARGET = .*\.\(cpp\|hpp\|c\|h\)
 
-all: grade
+all: grade.sh
 
 grade: $(FILES)
 	./tests/driver/grade.sh
